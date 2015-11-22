@@ -1,5 +1,5 @@
 
-var game = new Phaser.Game(800, 600, Phaser.CANVAS, 'phaser-example', { preload: preload, create: create, update: update });
+var game = new Phaser.Game(600, 480, Phaser.CANVAS, 'phaser-example', { preload: preload, create: create, update: update });
 
 function preload() {
 
@@ -39,7 +39,7 @@ function create() {
 
     game.physics.p2.updateBoundsCollisionGroup();
     game.cameraPos = new Phaser.Point(0,0);
-    game.cameraLerp = 0.02;
+    game.cameraLerp = 0.04;
 
     //  Create a new custom sized bounds, within the world bounds
     createPreviewBounds(bounds.x, bounds.y, bounds.width, bounds.height);
