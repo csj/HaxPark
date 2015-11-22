@@ -6,7 +6,7 @@ function preload() {
     game.load.spritesheet('ship', 'assets/sprites/humstar.png', 32, 32);
     game.load.spritesheet('veggies', 'assets/sprites/fruitnveg32wh37.png', 32, 32);
     game.load.image('ball', 'assets/sprites/shinyball.png');
-    game.load.image('yellow', 'assets/sprites/yellow_ball.png');
+    game.load.image('white', 'assets/sprites/white.png');
     game.load.image('clown', 'assets/sprites/clown.png');
 }
 
@@ -69,13 +69,14 @@ function create() {
         ball.body.collides([collisionGroupPlayers, collisionGroupBalls, collisionGroupWalls]);
     }
 
-    ship = game.add.sprite(bounds.centerX, bounds.centerY, 'yellow');
+    ship = game.add.sprite(bounds.centerX, bounds.centerY, 'white');
+    ship.tint = 0xdd8822;
     ship.inner_image = game.add.sprite(0,0,'clown');
     ship.inner_image.anchor.setTo(0.5);
-    ship.inner_image.scale.set(0.4);
+    ship.inner_image.scale.set(0.7);
     ship.addChild(ship.inner_image);
 
-    ship.scale.set(3.5);
+    ship.scale.set(2);
     ship.smoothed = false;
     //ship.animations.add('fly', [0,1,2,3,4,5], 10, true);
     //ship.play('fly');
@@ -187,7 +188,7 @@ function update() {
 			var diffy = b1.y - b2.y;
 			var len = Math.sqrt(diffx*diffx + diffy*diffy);
 			if (len > 57) continue;
-			b1.coolDown = game.time.totalElapsedSeconds() + 0.2;
+			b1.coolDown = game.time.totalElapsedSeconds() + 0.1;
 			
 			diffx /= len;
 			diffy /= len;

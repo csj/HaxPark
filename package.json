@@ -1,0 +1,11 @@
+{
+  "name": "haxpark",
+  "version": "1.0.0",
+  "description": "An exploration of what HaxBall could be",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "csj",
+  "license": "ISC"
+}
