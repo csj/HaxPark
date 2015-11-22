@@ -4,8 +4,10 @@ var game = new Phaser.Game(800, 600, Phaser.CANVAS, 'phaser-example', { preload:
 function preload() {
 
     game.load.spritesheet('ship', 'assets/sprites/humstar.png', 32, 32);
+    game.load.spritesheet('veggies', 'assets/sprites/fruitnveg32wh37.png', 32, 32);
     game.load.image('ball', 'assets/sprites/shinyball.png');
-
+    game.load.image('yellow', 'assets/sprites/yellow_ball.png');
+    game.load.image('clown', 'assets/sprites/clown.png');
 }
 
 var ship;
@@ -36,6 +38,8 @@ function create() {
     collisionGroupWalls = game.physics.p2.createCollisionGroup();
 
     game.physics.p2.updateBoundsCollisionGroup();
+    game.cameraPos = new Phaser.Point(0,0);
+    game.cameraLerp = 0.02;
 
     //  Create a new custom sized bounds, within the world bounds
     createPreviewBounds(bounds.x, bounds.y, bounds.width, bounds.height);
@@ -50,7 +54,7 @@ function create() {
 
     var ballPlayerCM = game.physics.p2.createContactMaterial(
     	ballMaterial, playerMaterial,
-    	{restitution: 0.1}
+    	{restitution: 0.3}
     );
 
     for (var i = 0; i < 20; i++)
@@ -65,10 +69,15 @@ function create() {
         ball.body.collides([collisionGroupPlayers, collisionGroupBalls, collisionGroupWalls]);
     }
 
-    ship = game.add.sprite(bounds.centerX, bounds.centerY, 'ship');
-    ship.scale.set(2);
+    ship = game.add.sprite(bounds.centerX, bounds.centerY, 'yellow');
+    ship.inner_image = game.add.sprite(0,0,'clown');
+    ship.inner_image.anchor.setTo(0.5);
+    ship.inner_image.scale.set(0.4);
+    ship.addChild(ship.inner_image);
+
+    ship.scale.set(3.5);
     ship.smoothed = false;
-    ship.animations.add('fly', [0,1,2,3,4,5], 10, true);
+    //ship.animations.add('fly', [0,1,2,3,4,5], 10, true);
     //ship.play('fly');
 
     //  Create our physics body. A circle assigned the playerCollisionGroup
@@ -82,8 +91,6 @@ function create() {
     ship.body.collides([collisionGroupPlayers, collisionGroupBalls]);
     ship.body.coolDown = 0;
     ship.body.setMaterial(playerMaterial);
-    game.camera.follow(ship);
-
 
     //  Just to display the bounds
     var graphics = game.add.graphics(bounds.x, bounds.y);
@@ -191,5 +198,7 @@ function update() {
 	    }
 	}
 
-
+	game.cameraPos.x += (ship.x - game.cameraPos.x) * game.cameraLerp; // smoothly adjust the x position
+	game.cameraPos.y += (ship.y - game.cameraPos.y) * game.cameraLerp; // smoothly adjust the y position
+	game.camera.focusOnXY(game.cameraPos.x, game.cameraPos.y); // apply smoothed virtual positions to actual camera
 }
