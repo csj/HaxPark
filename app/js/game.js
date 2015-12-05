@@ -13,36 +13,57 @@ function preload() {
 var ship;
 var cursors;
 var customBounds;
-var collisionGroupBalls;
 var balls;
+var obstacles;
+var collisionGroupBalls;
 var collisionGroupPlayers;
 var collisionGroupWalls;
+var collisionGroupObstacles;
 var wallMaterial;
 
-function create() {
-    game.world.setBounds(-600, -400, 1200, 800);
+var mapSettings = {
+    outOfBoundsMargin: 100,
+    halfPlayingWidth: 500,
+    halfPlayingHeight: 300,
+    halfNetHeight: 100,
+    netDepth: 20,
+    ballRadius: 20,
+    playerRadius: 32,
+    postRadius: 8,
+    shootPower: 400
+};
 
-    //  The bounds of our physics simulation
-    var bounds = new Phaser.Rectangle(-500, -300, 1000, 600);
+function create() {
+    var margin = mapSettings.outOfBoundsMargin;
+    var px = mapSettings.halfPlayingWidth;
+    var py = mapSettings.halfPlayingHeight;
+    var nx = mapSettings.netDepth;
+    var ny = mapSettings.halfNetHeight;
+
+    game.world.setBounds(
+        -px - margin - nx,
+        -py - margin,
+        2*px + 2*margin + 2*nx,
+        2*py + 2*margin
+    );
 
     game.physics.startSystem(Phaser.Physics.P2JS);
-
     game.physics.p2.restitution = 0.6;
-    game.physics.p2.setImpactEvents(true);
 
-    //  Some balls to collide with
     balls = game.add.physicsGroup(Phaser.Physics.P2JS);
+    obstacles = game.add.physicsGroup(Phaser.Physics.P2JS);
 
     collisionGroupPlayers = game.physics.p2.createCollisionGroup();
     collisionGroupBalls = game.physics.p2.createCollisionGroup();
     collisionGroupWalls = game.physics.p2.createCollisionGroup();
+    collisionGroupObstacles = game.physics.p2.createCollisionGroup();
 
     game.physics.p2.updateBoundsCollisionGroup();
     game.cameraPos = new Phaser.Point(0,0);
     game.cameraLerp = 0.04;
 
-    //  Create a new custom sized bounds, within the world bounds
-    createPreviewBounds(bounds.x, bounds.y, bounds.width, bounds.height);
+    createWalls();
+
     var ballMaterial = game.physics.p2.createMaterial('ballMaterial');
     var wallMaterial = game.physics.p2.createMaterial('wallMaterial');
     var playerMaterial = game.physics.p2.createMaterial('wallMaterial');
@@ -57,26 +78,39 @@ function create() {
     	{restitution: 0.3}
     );
 
+    var fieldBounds = new Phaser.Rectangle(-px, -py, 2*px, 2*py);
+
     for (var i = 0; i < 20; i++)
     {
-        var ball = balls.create(bounds.randomX, bounds.randomY, 'ball');
-        ball.scale.set(1.3);
-        ball.body.setCircle(16 * 1.3);
+        var ball = balls.create(fieldBounds.randomX, fieldBounds.randomY, 'ball');
+        ball.scale.set(mapSettings.ballRadius / 16.0);
+        ball.body.setCircle(mapSettings.ballRadius);
         ball.body.mass = 0.5;
         ball.body.setMaterial(ballMaterial);
         ball.body.damping = 0.5;
         ball.body.setCollisionGroup(collisionGroupBalls);
-        ball.body.collides([collisionGroupPlayers, collisionGroupBalls, collisionGroupWalls]);
+        ball.body.collides([collisionGroupPlayers, collisionGroupBalls, collisionGroupWalls, collisionGroupObstacles]);
     }
 
-    ship = game.add.sprite(bounds.centerX, bounds.centerY, 'white');
+    for (var xx = -1; xx <= 1; xx += 2) for (var yy = -1; yy <= 1; yy += 2) {    
+        var post = obstacles.create(px*xx, ny*yy, 'white');
+        console.log("creating post at " + nx*xx + "," + ny*yy);
+        post.scale.set(mapSettings.postRadius / 16.0);
+        post.body.setCircle(mapSettings.postRadius);
+        post.body.static = true;
+        post.body.setMaterial(ballMaterial);
+        post.body.damping = 0.5;
+        post.body.setCollisionGroup(collisionGroupObstacles);
+        post.body.collides([collisionGroupPlayers, collisionGroupBalls]);
+    }
+
+    ship = game.add.sprite(fieldBounds.centerX, fieldBounds.centerY, 'white');
     ship.tint = 0xdd8822;
     ship.inner_image = game.add.sprite(0,0,'clown');
     ship.inner_image.anchor.setTo(0.5);
     ship.inner_image.scale.set(0.7);
     ship.addChild(ship.inner_image);
 
-    ship.scale.set(2);
     ship.smoothed = false;
     //ship.animations.add('fly', [0,1,2,3,4,5], 10, true);
     //ship.play('fly');
@@ -84,19 +118,20 @@ function create() {
     //  Create our physics body. A circle assigned the playerCollisionGroup
     game.physics.p2.enable(ship, false);
 
+    ship.scale.set(mapSettings.playerRadius / 16.0);
     ship.body.fixedRotation = true;
-    ship.body.setCircle(28);
+    ship.body.setCircle(mapSettings.playerRadius);
     ship.body.damping = 0.9;
     ship.body.restitution = 0.2;
     ship.body.setCollisionGroup(collisionGroupPlayers);
-    ship.body.collides([collisionGroupPlayers, collisionGroupBalls]);
+    ship.body.collides([collisionGroupPlayers, collisionGroupBalls, collisionGroupObstacles]);
     ship.body.coolDown = 0;
     ship.body.setMaterial(playerMaterial);
 
     //  Just to display the bounds
-    var graphics = game.add.graphics(bounds.x, bounds.y);
+    var graphics = game.add.graphics(fieldBounds.x, fieldBounds.y);
     graphics.lineStyle(4, 0xffd900, 1);
-    graphics.drawRect(0, 0, bounds.width, bounds.height);
+    graphics.drawRect(0, 0, fieldBounds.width, fieldBounds.height);
 
     cursors = game.input.keyboard.addKeys({ 
     	'up': Phaser.KeyCode.UP, 
@@ -108,45 +143,61 @@ function create() {
 
 }
 
-function createPreviewBounds(x, y, w, h) {
+function createWalls() {
+    var x = mapSettings.halfPlayingWidth;
+    var y = mapSettings.halfPlayingHeight;
 
     customBounds = { left: null, right: null, top: null, bottom: null };
     var sim = game.physics.p2;
 
-    //  If you want to use your own collision group then set it here and un-comment the lines below
-    //var mask = sim.boundsCollisionGroup.mask;
     var mask = collisionGroupWalls.mask;
 
+    var left = new p2.Body({ 
+        mass: 0, 
+        position: [ sim.pxmi(-x), sim.pxmi(-y) ], 
+        angle: Math.PI / 2.0 
+    });
+    left.addShape(new p2.Plane());
+    //left.setMaterial(wallMaterial);
+    left.shapes[0].collisionGroup = mask;
+    left.shapes[0].collisionMask = collisionGroupBalls.mask;
+
+    var right = new p2.Body({
+        mass: 0, 
+        position: [ sim.pxmi(x), sim.pxmi(y) ], 
+        angle: -Math.PI / 2.0 
+    });
+    right.addShape(new p2.Plane());
+    //right.setMaterial(wallMaterial);
+    right.shapes[0].collisionGroup = mask;
+    right.shapes[0].collisionMask = collisionGroupBalls.mask;
+
+    var top = new p2.Body({ 
+        mass: 0, 
+        position: [ sim.pxmi(-x), sim.pxmi(-y) ], 
+        angle: -Math.PI 
+    });
+    top.addShape(new p2.Plane());
+    //top.setMaterial(wallMaterial);
+    top.shapes[0].collisionGroup = mask;
+    top.shapes[0].collisionMask = collisionGroupBalls.mask;
+
+    var bottom = new p2.Body({ 
+        mass: 0, 
+        position: [ sim.pxmi(x), sim.pxmi(y) ],
+        angle: 0
+    });
+    bottom.addShape(new p2.Plane());
+    //bottom.setMaterial(wallMaterial);
+    bottom.shapes[0].collisionGroup = mask;
+    bottom.shapes[0].collisionMask = collisionGroupBalls.mask;
+
+    sim.world.addBody(left);
+    sim.world.addBody(right);
+    sim.world.addBody(top);
+    sim.world.addBody(bottom);
 
 
-    customBounds.left = new p2.Body({ mass: 0, position: [ sim.pxmi(x), sim.pxmi(y) ], angle: 1.5707963267948966 });
-    customBounds.left.addShape(new p2.Plane());
-    //customBounds.left.setMaterial(wallMaterial);
-    customBounds.left.shapes[0].collisionGroup = mask;
-    customBounds.left.shapes[0].collisionMask = collisionGroupBalls.mask;
-
-    customBounds.right = new p2.Body({ mass: 0, position: [ sim.pxmi(x + w), sim.pxmi(y) ], angle: -1.5707963267948966 });
-    customBounds.right.addShape(new p2.Plane());
-    //customBounds.right.setMaterial(wallMaterial);
-    customBounds.right.shapes[0].collisionGroup = mask;
-    customBounds.right.shapes[0].collisionMask = collisionGroupBalls.mask;
-
-    customBounds.top = new p2.Body({ mass: 0, position: [ sim.pxmi(x), sim.pxmi(y) ], angle: -3.141592653589793 });
-    customBounds.top.addShape(new p2.Plane());
-    //customBounds.top.setMaterial(wallMaterial);
-    customBounds.top.shapes[0].collisionGroup = mask;
-    customBounds.top.shapes[0].collisionMask = collisionGroupBalls.mask;
-
-    customBounds.bottom = new p2.Body({ mass: 0, position: [ sim.pxmi(x), sim.pxmi(y + h) ] });
-    customBounds.bottom.addShape(new p2.Plane());
-    //customBounds.bottom.setMaterial(wallMaterial);
-    customBounds.bottom.shapes[0].collisionGroup = mask;
-    customBounds.bottom.shapes[0].collisionMask = collisionGroupBalls.mask;
-
-    sim.world.addBody(customBounds.left);
-    sim.world.addBody(customBounds.right);
-    sim.world.addBody(customBounds.top);
-    sim.world.addBody(customBounds.bottom);
 }
 
 var maxAccel = 400;
@@ -187,15 +238,17 @@ function update() {
 		    var diffx = b1.x - b2.x;
 			var diffy = b1.y - b2.y;
 			var len = Math.sqrt(diffx*diffx + diffy*diffy);
-			if (len > 57) continue;
+            var dist = len
+              - mapSettings.ballRadius
+              - mapSettings.playerRadius;
+			if (dist > 5) continue;
 			b1.coolDown = game.time.totalElapsedSeconds() + 0.1;
 			
 			diffx /= len;
 			diffy /= len;
 
-			var power = 400;
-			b2.velocity.x -= diffx * power;
-			b2.velocity.y -= diffy * power;
+			b2.velocity.x -= diffx * mapSettings.shootPower;
+			b2.velocity.y -= diffy * mapSettings.shootPower;
 	    }
 	}
 
