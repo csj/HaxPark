@@ -19,6 +19,7 @@ cursors = null
 ship = null
 balls = null
 walls = null
+sounds = null
 
 game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'phaser-example',
   preload: ->
@@ -29,6 +30,8 @@ game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'phaser-example',
     game.load.image 'player', 'assets/sprites/mario.gif'
     game.load.image 'ball', 'assets/sprites/white_outline.png', 32, 32
     game.load.image 'grass', 'assets/sprites/grass.jpg'
+    game.load.audio 'kick', 'assets/audio/wall.wav'
+    game.load.audio 'wall', 'assets/audio/wall.wav'
 
   createWalls: ->
     walls = new (p2.Body)(
@@ -141,13 +144,13 @@ game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'phaser-example',
     game.world.setBounds -halfWorldWidth, -halfWorldHeight, 2*halfWorldWidth, 2*halfWorldHeight
     game.add.tileSprite(-halfWorldWidth, -halfWorldHeight, 2*halfWorldWidth, 2*halfWorldHeight, 'grass');
     game.physics.startSystem Phaser.Physics.P2JS
+    game.physics.p2.setImpactEvents true
     game.physics.p2.restitution = 0.5
 
     collisionGroupPlayers = game.physics.p2.createCollisionGroup()
     collisionGroupBalls = game.physics.p2.createCollisionGroup()
     collisionGroupWalls = game.physics.p2.createCollisionGroup()
     collisionGroupObstacles = game.physics.p2.createCollisionGroup()
-
     
     this.createWalls()
 
@@ -192,7 +195,7 @@ game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'phaser-example',
       ]
     for xx in [-1,1] 
       for yy in [-1,1]
-        post = onFieldGroup.create(px * xx, ny * yy, 'white')
+        post = onFieldGroup.create(px * xx, ny * yy, bmd2)
         post.scale.set mapSettings.postRadius / 16.0
         post.body.setCircle mapSettings.postRadius
         post.body.static = true
@@ -240,6 +243,10 @@ game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'phaser-example',
     ship.body.coolDown = 0
     ship.body.setMaterial playerMaterial
     
+    sounds = 
+      kick: game.add.audio('kick')
+      wall: game.add.audio('wall')
+
     cursors = game.input.keyboard.addKeys(
       'up': Phaser.KeyCode.UP
       'down': Phaser.KeyCode.DOWN
@@ -264,24 +271,29 @@ game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'phaser-example',
       ship.body.force.y = -accel
     else if cursors.down.isDown
       ship.body.force.y = accel
+
     b1 = ship.body
+    didKick = false
+    
     if b1.isShooting and ship.body.coolDown < game.time.totalElapsedSeconds()
-      k = 0
-      while k < balls.children.length
-        b2 = balls.children[k].body
+      for ball in balls.children
+        b2 = ball.body
         diffx = b1.x - (b2.x)
         diffy = b1.y - (b2.y)
         len = Math.sqrt(diffx * diffx + diffy * diffy)
         dist = len - (mapSettings.ballRadius) - (mapSettings.playerRadius)
         if dist > 5
-          k++
           continue
+
+        didKick = true
         b1.coolDown = game.time.totalElapsedSeconds() + 0.1
         diffx /= len
         diffy /= len
         b2.velocity.x -= diffx * mapSettings.shootPower
-        b2.velocity.y -= diffy * mapSettings.shootPower
-        k++
+        b2.velocity.y -= diffy * mapSettings.shootPower    
+    
+    if didKick 
+      sounds.kick.play()
     game.cameraPos.x += (ship.x - (game.cameraPos.x)) * game.cameraLerp
     # smoothly adjust the x position
     game.cameraPos.y += (ship.y - (game.cameraPos.y)) * game.cameraLerp
