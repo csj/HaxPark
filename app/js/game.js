@@ -36,7 +36,7 @@ walls = null;
 game = new Phaser.Game(800, 600, Phaser.CANVAS, 'phaser-example', {
   preload: function() {
     game.load.image('white', 'assets/sprites/white.png');
-    game.load.image('clown', 'assets/sprites/clown.png');
+    game.load.image('player', 'assets/sprites/mario.gif');
     game.load.image('ball', 'assets/sprites/white_outline.png', 32, 32);
     return game.load.image('grass', 'assets/sprites/grass.jpg');
   },
@@ -134,8 +134,8 @@ game = new Phaser.Game(800, 600, Phaser.CANVAS, 'phaser-example', {
     ny = mapSettings.halfNetHeight;
     halfWorldWidth = px + margin + nx;
     halfWorldHeight = py + margin;
-    game.world.setBounds(-halfWorldWidth, -halfWorldHeight, 2 * halfWorldWidth, 2 * halfWorldWidth);
-    game.add.tileSprite(-halfWorldWidth, -halfWorldHeight, 2 * halfWorldWidth, 2 * halfWorldWidth, 'grass');
+    game.world.setBounds(-halfWorldWidth, -halfWorldHeight, 2 * halfWorldWidth, 2 * halfWorldHeight);
+    game.add.tileSprite(-halfWorldWidth, -halfWorldHeight, 2 * halfWorldWidth, 2 * halfWorldHeight, 'grass');
     game.physics.startSystem(Phaser.Physics.P2JS);
     game.physics.p2.restitution = 0.5;
     collisionGroupPlayers = game.physics.p2.createCollisionGroup();
@@ -172,7 +172,7 @@ game = new Phaser.Game(800, 600, Phaser.CANVAS, 'phaser-example', {
       ball.tint = this.randomColor();
       ball.scale.set(mapSettings.ballRadius / 16.0);
       ball.body.setCircle(mapSettings.ballRadius);
-      ball.body.mass = 0.5;
+      ball.body.mass = 0.3;
       ball.body.setMaterial(ballMaterial);
       ball.body.damping = 0.5;
       ball.body.fixedRotation = true;
@@ -199,10 +199,10 @@ game = new Phaser.Game(800, 600, Phaser.CANVAS, 'phaser-example', {
     bmd.circle(18, 18, 17);
     bmd.draw('white', 4, 4);
     ship = game.add.sprite(fieldBounds.centerX, fieldBounds.centerY, bmd);
-    ship.tint = 0xFF9900;
-    ship.inner_image = game.add.sprite(0, 0, 'clown');
+    ship.originalTint = 0xFF9900;
+    ship.inner_image = game.add.sprite(0, 0, 'player');
     ship.inner_image.anchor.setTo(0.5);
-    ship.inner_image.scale.set(0.7);
+    ship.inner_image.scale.set(1.3);
     ship.addChild(ship.inner_image);
     ship.smoothed = true;
     game.physics.p2.enable(ship, false);
@@ -227,8 +227,10 @@ game = new Phaser.Game(800, 600, Phaser.CANVAS, 'phaser-example', {
     var accel, b1, b2, diffx, diffy, dist, k, len;
     if (cursors.shoot.isDown) {
       ship.body.isShooting = true;
+      ship.tint = 0xFFFFFF;
     } else {
       ship.body.isShooting = false;
+      ship.tint = ship.originalTint;
     }
     accel = ship.body.isShooting ? shootingAccel : maxAccel;
     if (cursors.left.isDown) {
