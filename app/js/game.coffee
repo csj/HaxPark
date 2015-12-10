@@ -18,6 +18,7 @@ collisionGroupObstacles = null
 cursors = null
 ship = null
 balls = null
+walls = null
 
 game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'phaser-example',
   preload: ->
@@ -27,6 +28,7 @@ game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'phaser-example',
     game.load.image 'white', 'assets/sprites/white.png'
     game.load.image 'clown', 'assets/sprites/clown.png'
     game.load.image 'ball', 'assets/sprites/white_outline.png', 32, 32
+    game.load.image 'grass', 'assets/sprites/grass.jpg'
 
   createWalls: ->
     walls = new (p2.Body)(
@@ -38,6 +40,7 @@ game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'phaser-example',
     y = mapSettings.halfPlayingHeight
     n = mapSettings.halfNetHeight
     d = mapSettings.netDepth
+    
     # top and bottom
     walls.addShape new (p2.Line)(length: sim.pxmi(2 * x)), [
       0
@@ -94,11 +97,21 @@ game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'phaser-example',
       0
     ], Math.PI / 2.0
 
+    graphics = game.add.graphics(0, 0)
+    graphics.lineStyle 6, 0xFFFFFF, 0.6
+    graphics.drawRect -x, -y, x*2, y*2
+    graphics.drawRect -x-d, -n, d, 2*n
+    graphics.drawRect x, -n, d, 2*n
+
     for shape in walls.shapes
       shape.collisionGroup = collisionGroupWalls.mask
       shape.collisionMask = collisionGroupBalls.mask
 
+
     game.physics.p2.world.addBody walls
+    floorGroup = game.add.group()
+    floorGroup.z = 0.5
+    floorGroup.add(graphics)
     return
   
   randomColor: ->
@@ -115,34 +128,37 @@ game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'phaser-example',
 
 
   create: ->
-    game.stage.backgroundColor = 0x336644
+    #game.stage.backgroundColor = 0x336644
     margin = mapSettings.outOfBoundsMargin
     px = mapSettings.halfPlayingWidth
     py = mapSettings.halfPlayingHeight
     nx = mapSettings.netDepth
     ny = mapSettings.halfNetHeight
-    
-    game.world.setBounds -px - margin - nx, -py - margin, 2 * px + 2 * margin + 2 * nx, 2 * py + 2 * margin
+
+    halfWorldWidth = px+margin+nx
+    halfWorldHeight = py+margin
+
+    game.world.setBounds -halfWorldWidth, -halfWorldHeight, 2*halfWorldWidth, 2*halfWorldWidth
+    game.add.tileSprite(-halfWorldWidth, -halfWorldHeight, 2*halfWorldWidth, 2*halfWorldWidth, 'grass');
     game.physics.startSystem Phaser.Physics.P2JS
     game.physics.p2.restitution = 0.5
-    
-    floorGroup = game.add.group()
-    floorGroup.z = 0.5
-
-    balls = game.add.physicsGroup(Phaser.Physics.P2JS)
-
-    onFieldGroup = game.add.physicsGroup(Phaser.Physics.P2JS)
-    onFieldGroup.z = 1
 
     collisionGroupPlayers = game.physics.p2.createCollisionGroup()
     collisionGroupBalls = game.physics.p2.createCollisionGroup()
     collisionGroupWalls = game.physics.p2.createCollisionGroup()
     collisionGroupObstacles = game.physics.p2.createCollisionGroup()
 
+    
+    this.createWalls()
+
+    balls = game.add.physicsGroup(Phaser.Physics.P2JS)
+
+    onFieldGroup = game.add.physicsGroup(Phaser.Physics.P2JS)
+    onFieldGroup.z = 1
+
     game.physics.p2.updateBoundsCollisionGroup()
     game.cameraPos = new (Phaser.Point)(0, 0)
     game.cameraLerp = 0.04
-    this.createWalls()
 
     ballMaterial = game.physics.p2.createMaterial('ballMaterial')
     wallMaterial = game.physics.p2.createMaterial('wallMaterial')
@@ -150,16 +166,20 @@ game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'phaser-example',
     postMaterial = game.physics.p2.createMaterial('postMaterial')
     
     ballBallCM = game.physics.p2.createContactMaterial(ballMaterial, ballMaterial, restitution: 0.8)
-    ballPlayerCM = game.physics.p2.createContactMaterial(ballMaterial, playerMaterial, restitution: 0.2)
+    ballPlayerCM = game.physics.p2.createContactMaterial(ballMaterial, playerMaterial, (restitution: 0.2, friction: 0))
     ballPostCM = game.physics.p2.createContactMaterial(ballMaterial, postMaterial, restitution: 0.3)
     
     fieldBounds = new (Phaser.Rectangle)(-px, -py, 2 * px, 2 * py)
+    bmd2 = game.add.bitmapData(37,37)
+    bmd2.circle(18,18,17)
+    bmd2.draw('ball', 2, 2)
+
     for [1..20]
-      ball = balls.create(fieldBounds.randomX, fieldBounds.randomY, 'ball')
+      ball = balls.create(fieldBounds.randomX, fieldBounds.randomY, bmd2)
       ball.tint = this.randomColor()
       ball.scale.set mapSettings.ballRadius / 16.0
       ball.body.setCircle mapSettings.ballRadius
-      ball.body.mass = 0.3
+      ball.body.mass = 0.5
       ball.body.setMaterial ballMaterial
       ball.body.damping = 0.5
       ball.body.fixedRotation = true
@@ -183,13 +203,25 @@ game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'phaser-example',
           collisionGroupPlayers
           collisionGroupBalls
         ]
-    ship = game.add.sprite(fieldBounds.centerX, fieldBounds.centerY, 'white')
+
+    bmd = game.add.bitmapData(37,37)
+    bmd.circle(18,18,17)
+    bmd.draw('white', 4, 4)
+    ship = game.add.sprite(fieldBounds.centerX, fieldBounds.centerY, bmd)
+
     ship.tint = 0xFF9900
     ship.inner_image = game.add.sprite(0, 0, 'clown')
     ship.inner_image.anchor.setTo 0.5
     ship.inner_image.scale.set 0.7
     ship.addChild ship.inner_image
-    ship.smoothed = false
+
+    # gfx = game.add.graphics(0,0)
+    # gfx.lineStyle 3, 0x000000, 1
+    # gfx.drawCircle(0, 0, 29)
+    # ship.inner_image.addChild gfx
+
+
+    ship.smoothed = true
     #ship.animations.add('fly', [0,1,2,3,4,5], 10, true);
     #ship.play('fly');
     #  Create our physics body. A circle assigned the playerCollisionGroup
@@ -207,12 +239,6 @@ game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'phaser-example',
     ]
     ship.body.coolDown = 0
     ship.body.setMaterial playerMaterial
-    #  Just to display the bounds
-    
-    graphics = game.add.graphics(0, 0)
-    graphics.lineStyle 4, 0xffd900, 1
-    graphics.drawRect -px, -py, px*2, py*2
-    floorGroup.add(graphics)
     
     cursors = game.input.keyboard.addKeys(
       'up': Phaser.KeyCode.UP
