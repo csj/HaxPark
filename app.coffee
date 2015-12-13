@@ -5,6 +5,18 @@ server = http.createServer(app)
 io = require('socket.io')(server);
 p2 = require('p2')
 
+randomColor = (min, max) ->
+  val = Math.floor(Math.random() * (max-min)) + min
+  
+  dice = Math.random() * 6
+  switch
+    when dice < 1 then 0x0000FF + val * 0x000100
+    when dice < 2 then 0x0000FF + val * 0x010000
+    when dice < 3 then 0x00FF00 + val * 0x000001
+    when dice < 4 then 0x00FF00 + val * 0x010000
+    when dice < 5 then 0xFF0000 + val * 0x000001
+    when dice < 6 then 0xFF0000 + val * 0x000100
+
 app.use(express.static(__dirname + '/app'));
 
 collisionGroupPlayers = null
@@ -12,11 +24,12 @@ collisionGroupBalls = null
 collisionGroupWalls = null
 collisionGroupObstacles = null
 world = new p2.World(gravity: [0, 0])
+#world.setGlobalRelaxation 10
 
 mapSettings = 
   outOfBoundsMargin: 100
-  halfPlayingWidth: 400
-  halfPlayingHeight: 250
+  halfPlayingWidth: 260
+  halfPlayingHeight: 200
   halfNetHeight: 80
   netDepth: 40
   ballRadius: 12
@@ -102,14 +115,33 @@ for [1..30]
     fixedRotation: true
   )
   ball.addShape new p2.Circle(
-    radius: mapSettings.ballRadius, 
+    radius: mapSettings.ballRadius
     material: ballMaterial
     collisionGroup: collisionGroups.balls
     collisionMask: collisionGroups.balls | collisionGroups.walls | collisionGroups.players | collisionGroups.obstacles
   )
+  ball.color = randomColor(100,255)
   balls.push ball
-
   world.addBody ball
+
+for color in [0x0000FF, 0x00FF00, 0xFF0000, 0xFFFF00, 0xFF00FF, 0x00FFFF]
+  player = new p2.Body(
+    position: [randX(), randY()]
+    mass: 1
+    damping: 0.9
+    fixedRotation: true
+  )
+  player.addShape new p2.Circle(
+    radius: mapSettings.playerRadius
+    material: playerMaterial
+    collisionGroup: collisionGroups.players
+    collisionMask: collisionGroups.players | collisionGroups.balls | collisionGroups.obstacles
+  )
+  #console.log("Setting color to " + color)
+  player.color = color
+  player.coolDown = 0
+  players.push player
+  world.addBody player
 
 for xx in [-1,1] 
   for yy in [-1,1]
@@ -131,15 +163,86 @@ console.log("Listening on 8000...");
 io.on 'connection', (socket) ->
   console.log('a user connected')
 
-timeStep = 1/60
+timeStep = 1/30
+
+len = (p) ->
+  Math.sqrt(p[0]*p[0] + p[1]*p[1])
+
+normal = (p) ->
+  d = len(p)
+  [p[0] / d, p[1] / d]
+
+mult = (p, scalar) ->
+  [p[0] * scalar, p[1] * scalar]
+
+divide = (p, scalar) ->
+  mult(p, 1/scalar)
+
+add = (p1, p2) ->
+  [p1[0] + p2[0], p1[1] + p2[1]]
+
+subtract = (p1, p2) ->
+  add(p1, mult(p2, -1))
+
+rando = (a) ->
+  (Math.random() * 2 - 1) * a
+
+cap = (p, max) ->
+  d = len(p)
+  if (d > max)
+    mult(normal(p), max)
+  else
+    p
 
 setInterval ->
-  #The step method moves the bodies forward in time. 
+  #console.log "The time is " + new Date().getTime()
+  for player in players
+    #console.log("new player")
+    closestBall = null
+    closestDist = 10000000
+    for ball in balls
+      theDiff = subtract(ball.position, player.position)
+      theDist = len(theDiff)
+      if theDist - mapSettings.ballRadius - mapSettings.playerRadius < 5 and player.coolDown < new Date().getTime()
+        #console.log("kick!")
+        player.coolDown = new Date().getTime() + 100
+        ball.velocity = add(ball.velocity, mult(normal(theDiff), mapSettings.shootPower))
+
+      if theDist < closestDist
+        #console.log("Found new best: " + ball.id + ": " + theDist)
+        closestBall = ball
+        closestDist = theDist
+      
+      # if b1.shooting and player.body.coolDown < game.time.totalElapsedSeconds()
+      #   for ball in balls.children
+      #     b2 = ball.body
+      #     diffx = b1.x - (b2.x)
+      #     diffy = b1.y - (b2.y)
+      #     len = Math.sqrt(diffx * diffx + diffy * diffy)
+      #     dist = len - (mapSettings.ballRadius) - (mapSettings.playerRadius)
+      #     if dist > 5
+      #       continue
+
+      #     didKick = true
+      #     b1.coolDown = game.time.totalElapsedSeconds() + 0.1
+      #     diffx /= len
+      #     diffy /= len
+      #     b2.velocity.x -= diffx * mapSettings.shootPower
+      #     b2.velocity.y -= diffy * mapSettings.shootPower  
+    
+    accel = mapSettings.maxAccel
+    direction = add(subtract(closestBall.position, player.position), [rando(30), rando(30)])
+    player.velocity = add(player.velocity, mult(normal(direction), accel*timeStep))
+
+  # cap the ball speeds
+  for ball in balls
+    ball.velocity = cap(ball.velocity, mapSettings.ballRadius / timeStep - 10)
+
+  #The step method moves the bodies forward in time.
   world.step timeStep
   #console.log (JSON.stringify(dynamicobjects[0].position))
   packet = 
-    balls: ({id: o.id, x: o.position[0], y: o.position[1]} for o in balls)
-    players: ({id: o.id, x: o.position[0], y: o.position[1]} for o in players)
+    balls: ({id: o.id, x: o.position[0], y: o.position[1], c: o.color} for o in balls)
+    players: ({id: o.id, x: o.position[0], y: o.position[1], c: o.color} for o in players)
   io.emit 'positions', packet
-
 , 1000 * timeStep

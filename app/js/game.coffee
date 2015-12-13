@@ -1,7 +1,7 @@
 mapSettings = 
   outOfBoundsMargin: 100
-  halfPlayingWidth: 400
-  halfPlayingHeight: 250
+  halfPlayingWidth: 260
+  halfPlayingHeight: 200
   halfNetHeight: 80
   netDepth: 40
   ballRadius: 12
@@ -16,8 +16,9 @@ collisionGroupBalls = null
 collisionGroupWalls = null
 collisionGroupObstacles = null
 cursors = null
-ship = null
+player = null
 balls = null
+players = null
 walls = null
 sounds = null
 ballTexture = null
@@ -143,6 +144,7 @@ game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'haxpark',
     this.createWalls()
 
     balls = game.add.group()
+    players = game.add.group()
 
     onFieldGroup = game.add.physicsGroup(Phaser.Physics.P2JS)
     onFieldGroup.z = 1
@@ -184,29 +186,6 @@ game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'haxpark',
           collisionGroupBalls
         ]
 
-    # ship = game.add.sprite(fieldBounds.centerX, fieldBounds.centerY, playerTexture)
-    # ship.originalTint = 0xFF9900
-    # ship.inner_image = game.add.sprite(0, 0, 'mario')
-    # ship.inner_image.anchor.setTo 0.5
-    # ship.inner_image.scale.set 1.3
-    # ship.addChild ship.inner_image
-
-    # ship.smoothed = true
-    # game.physics.p2.enable ship, false
-    # ship.scale.set mapSettings.playerRadius / 16.0
-    # ship.body.fixedRotation = true
-    # ship.body.setCircle mapSettings.playerRadius
-    # ship.body.damping = 0.9
-    # ship.body.restitution = 0.2
-    # ship.body.setCollisionGroup collisionGroupPlayers
-    # ship.body.collides [
-    #   collisionGroupPlayers
-    #   collisionGroupBalls
-    #   collisionGroupObstacles
-    # ]
-    # ship.body.coolDown = 0
-    # ship.body.setMaterial playerMaterial
-
     sounds = 
       kick: game.add.audio('kick')
       wall: game.add.audio('wall')
@@ -221,74 +200,68 @@ game = new (Phaser.Game)(800, 600, Phaser.CANVAS, 'haxpark',
     ready = true
 
   update: ->
-    # if cursors.shoot.isDown
-    #   ship.body.isShooting = true
-    #   ship.tint = 0xFFFFFF
-    # else
-    #   ship.body.isShooting = false
-    #   ship.tint = ship.originalTint
-    # accel = if ship.body.isShooting then shootingAccel else maxAccel
-    
-    # if cursors.left.isDown
-    #   ship.body.force.x = -accel
-    # else if cursors.right.isDown
-    #   ship.body.force.x = accel
-    # if cursors.up.isDown
-    #   ship.body.force.y = -accel
-    # else if cursors.down.isDown
-    #   ship.body.force.y = accel
-
-    # b1 = ship.body
     # didKick = false
-    
-    # if b1.isShooting and ship.body.coolDown < game.time.totalElapsedSeconds()
-    #   for ball in balls.children
-    #     b2 = ball.body
-    #     diffx = b1.x - (b2.x)
-    #     diffy = b1.y - (b2.y)
-    #     len = Math.sqrt(diffx * diffx + diffy * diffy)
-    #     dist = len - (mapSettings.ballRadius) - (mapSettings.playerRadius)
-    #     if dist > 5
-    #       continue
+    for player in players.children
+      # if cursors.shoot.isDown
+      #   player.body.isShooting = true
+      #   player.tint = 0xFFFFFF
+      # else
+      #   player.body.isShooting = false
+      #   player.tint = player.originalTint
+      # accel = if player.body.isShooting then shootingAccel else maxAccel
 
-    #     didKick = true
-    #     b1.coolDown = game.time.totalElapsedSeconds() + 0.1
-    #     diffx /= len
-    #     diffy /= len
-    #     b2.velocity.x -= diffx * mapSettings.shootPower
-    #     b2.velocity.y -= diffy * mapSettings.shootPower    
+      if player.shooting
+        player.tint = 0xFFFFFF
+      else
+        player.tint = player.originalTint
+
+      # if cursors.left.isDown
+      #   player.body.force.x = -accel
+      # else if cursors.right.isDown
+      #   player.body.force.x = accel
+      # if cursors.up.isDown
+      #   player.body.force.y = -accel
+      # else if cursors.down.isDown
+      #   player.body.force.y = accel
+
+      # b1 = player
+      
+      # if b1.shooting and player.body.coolDown < game.time.totalElapsedSeconds()
+      #   for ball in balls.children
+      #     b2 = ball.body
+      #     diffx = b1.x - (b2.x)
+      #     diffy = b1.y - (b2.y)
+      #     len = Math.sqrt(diffx * diffx + diffy * diffy)
+      #     dist = len - (mapSettings.ballRadius) - (mapSettings.playerRadius)
+      #     if dist > 5
+      #       continue
+
+      #     didKick = true
+      #     b1.coolDown = game.time.totalElapsedSeconds() + 0.1
+      #     diffx /= len
+      #     diffy /= len
+      #     b2.velocity.x -= diffx * mapSettings.shootPower
+      #     b2.velocity.y -= diffy * mapSettings.shootPower    
     
     # if didKick 
     #   sounds.kick.play()
-    # game.cameraPos.x += (ship.x - (game.cameraPos.x)) * game.cameraLerp
+    # game.cameraPos.x += (player.x - (game.cameraPos.x)) * game.cameraLerp
     # # smoothly adjust the x position
-    # game.cameraPos.y += (ship.y - (game.cameraPos.y)) * game.cameraLerp
+    # game.cameraPos.y += (player.y - (game.cameraPos.y)) * game.cameraLerp
     # # smoothly adjust the y position
     # game.camera.focusOnXY game.cameraPos.x, game.cameraPos.y
-    # # apply smoothed virtual positions to actual camera
+    # apply smoothed virtual positions to actual camera
     return
 
 )
 
-randomColor = ->
-  val = Math.floor(Math.random() * 180) + 30
-  
-  dice = Math.random() * 6
-  switch
-    when dice < 1 then 0x0000FF + val * 0x000100
-    when dice < 2 then 0x0000FF + val * 0x010000
-    when dice < 3 then 0x00FF00 + val * 0x000001
-    when dice < 4 then 0x00FF00 + val * 0x010000
-    when dice < 5 then 0xFF0000 + val * 0x000001
-    when dice < 6 then 0xFF0000 + val * 0x000100
     
-spawnBall = (id,x,y) ->
+spawnBall = (id,x,y,c) ->
   ball = balls.create(x, y, ballTexture)
   ball.id = id
   ball.anchor.x = 0.5
   ball.anchor.y = 0.5
-
-  ball.tint = randomColor()
+  ball.tint = c
   ball.scale.set mapSettings.ballRadius / 16.0
   # ball.body.setCircle mapSettings.ballRadius
   # ball.body.mass = 0.3
@@ -303,18 +276,57 @@ spawnBall = (id,x,y) ->
   #   collisionGroupObstacles
   # ]
 
+spawnPlayer = (id,x,y,c) ->
+  player = players.create(x, y, playerTexture)
+  player.id = id
+  player.anchor.x = 0.5
+  player.anchor.y = 0.5
+  player.originalTint = c
+  player.tint = player.originalTint
+  player.inner_image = game.add.sprite(0, 0, 'mario')
+  player.inner_image.anchor.setTo 0.5
+  player.inner_image.scale.set 1.3
+  player.addChild player.inner_image
+  player.smoothed = true
+  player.scale.set mapSettings.playerRadius / 16.0
+
+  # game.physics.p2.enable player, false
+  # player.body.fixedRotation = true
+  # player.body.setCircle mapSettings.playerRadius
+  # player.body.damping = 0.9
+  # player.body.restitution = 0.2
+  # player.body.setCollisionGroup collisionGroupPlayers
+  # player.body.collides [
+  #   collisionGroupPlayers
+  #   collisionGroupBalls
+  #   collisionGroupObstacles
+  # ]
+  # player.body.setMaterial playerMaterial
+  # player.body.coolDown = 0
+  return
+
+
 socket.on 'positions', (packet) ->
   if not ready 
     return
+
   #console.log JSON.stringify packet
   for ball in packet.balls
     matchedBall = balls.children.find((b) -> b.id == ball.id)
     if not matchedBall
-      #console.log "spawning at " + ball.x + ", " + ball.y
-      spawnBall ball.id, ball.x, ball.y
+      spawnBall ball.id, ball.x, ball.y, ball.c
     else
-      #console.log "updating to " + ball.x + ", " + ball.y
       matchedBall.x = ball.x
       matchedBall.y = ball.y
-  #console.log "done with balls"
+  
+  for player in packet.players
+    matchedPlayer = players.children.find((p) -> p.id == player.id)
+    if not matchedBall
+      spawnPlayer player.id, player.x, player.y, player.c
+    else
+      matchedPlayer.x = player.x
+      matchedPlayer.y = player.y
+      matchedPlayer.shooting = player.shooting
+      #matchedPlayer.originalTint = player.c
+
   return
