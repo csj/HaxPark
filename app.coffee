@@ -231,7 +231,10 @@ setInterval ->
       #     b2.velocity.y -= diffy * mapSettings.shootPower  
     
     accel = mapSettings.maxAccel
-    direction = add(subtract(closestBall.position, player.position), [rando(30), rando(30)])
+    target = add(closestBall.position, mult(normal(closestBall.position), mapSettings.playerRadius))
+    theDiff = subtract(target, player.position)
+
+    direction = add(theDiff, [rando(30), rando(30)])
     player.velocity = add(player.velocity, mult(normal(direction), accel*timeStep))
 
   # cap the ball speeds

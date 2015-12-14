@@ -295,7 +295,7 @@ cap = function(p, max) {
 };
 
 setInterval(function() {
-  var accel, closestBall, closestDist, direction, len5, len6, len7, o, packet, q, r, s, theDiff, theDist;
+  var accel, closestBall, closestDist, direction, len5, len6, len7, o, packet, q, r, s, target, theDiff, theDist;
   for (q = 0, len5 = players.length; q < len5; q++) {
     player = players[q];
     closestBall = null;
@@ -314,7 +314,9 @@ setInterval(function() {
       }
     }
     accel = mapSettings.maxAccel;
-    direction = add(subtract(closestBall.position, player.position), [rando(30), rando(30)]);
+    target = add(closestBall.position, mult(normal(closestBall.position), mapSettings.playerRadius));
+    theDiff = subtract(target, player.position);
+    direction = add(theDiff, [rando(30), rando(30)]);
     player.velocity = add(player.velocity, mult(normal(direction), accel * timeStep));
   }
   for (s = 0, len7 = balls.length; s < len7; s++) {
